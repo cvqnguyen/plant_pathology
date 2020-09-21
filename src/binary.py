@@ -4,7 +4,6 @@ from tensorflow.keras.datasets import mnist
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.applications import VGG16
 
 import pandas as pd
 import numpy as np
@@ -36,15 +35,15 @@ def generators():
     columns = ['healthy', 'multiple_diseases', 'rust', 'scab']
     # Create generators for train, test, val to save memory
     train_generator=train_datagen.flow_from_dataframe(dataframe=train_df, directory="./data/", 
-                        x_col="image_id", y_col=columns, subset='training', batch_size=batch_size, seed=4666, 
+                        x_col="image_id", y_col="healthy", subset='training', batch_size=batch_size, seed=4666, 
                         shuffle=True, class_mode="raw", target_size=(img_rows, img_cols))
     
     val_generator=test_datagen.flow_from_dataframe(dataframe=val_df, directory="./data/", x_col="image_id", 
-                        y_col=columns, batch_size=batch_size, seed=4666, shuffle=True, class_mode="raw", 
+                        y_col="healthy", batch_size=batch_size, seed=4666, shuffle=True, class_mode="raw", 
                         target_size=(img_rows, img_cols))
 
     test_generator=test_datagen.flow_from_dataframe(dataframe=test_df, directory="./data/", x_col="image_id", 
-                        y_col=columns, batch_size=batch_size, seed=4666, shuffle=False, class_mode="raw", 
+                        y_col="healthy", batch_size=batch_size, seed=4666, shuffle=False, class_mode="raw", 
                         target_size=(img_rows, img_cols))
     
     return train_generator, val_generator, test_generator
@@ -53,69 +52,48 @@ def generators():
 
 def define_model(nb_filters, kernel_size, input_shape, pool_size):
     #nb_filters, kernel_size, input_shape, pool_size
-    # model = Sequential()  # model is a linear stack of layers (don't change)
-    model = Sequential()
+    model = Sequential()  # model is a linear stack of layers (don't change)
 
-    model.add(Conv2D(input_shape=(224,224,3),filters=64,kernel_size=(3,3),padding="same", activation="relu"))
-    model.add(Conv2D(filters=64,kernel_size=(3,3),padding="same", activation="relu"))
-    model.add(MaxPooling2D(pool_size=(2,2),strides=(2,2)))
-    
-    model.add(Conv2D(filters=128, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=128, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(MaxPooling2D(pool_size=(2,2),strides=(2,2)))
-    
-    model.add(Conv2D(filters=256, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=256, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=256, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(MaxPooling2D(pool_size=(2,2),strides=(2,2)))
-    
-    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(MaxPooling2D(pool_size=(2,2),strides=(2,2)))
-    
-    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(Conv2D(filters=512, kernel_size=(3,3), padding="same", activation="relu"))
-    model.add(MaxPooling2D(pool_size=(2,2),strides=(2,2)))
 
-    # model.add(Conv2D(input_shape=input_shape, filters=32, kernel_size=kernel_size, padding='valid', activation='relu')) 
+
+
+    model.add(Conv2D(input_shape=input_shape, filters=32, kernel_size=kernel_size, padding='valid', activation='relu')) 
     # model.add(Conv2D(filters=32, kernel_size=kernel_size, activation='relu'))
-    # model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(MaxPooling2D(pool_size=pool_size))
     # model.add(Dropout(0.5))
 
+    model.add(Conv2D(filters=32, kernel_size=kernel_size, padding='valid', activation='relu'))
     # model.add(Conv2D(filters=32, kernel_size=kernel_size, padding='valid', activation='relu'))
-    # model.add(Conv2D(filters=32, kernel_size=kernel_size, padding='valid', activation='relu'))
-    # model.add(MaxPooling2D(pool_size=pool_size))
-    # model.add(Dropout(0.5))
+    model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(Dropout(0.5))
 
-    # model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
-    # model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
-    # model.add(MaxPooling2D(pool_size=pool_size))
-    # model.add(Dropout(0.5))
+    model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
+    model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
+    model.add(MaxPooling2D(pool_size=pool_size))
+    model.add(Dropout(0.5))
 
+    model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
+    model.add(MaxPooling2D(pool_size=pool_size)) 
     # model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
     # model.add(MaxPooling2D(pool_size=pool_size)) 
-    # # model.add(Conv2D(filters=64, kernel_size=kernel_size, padding='valid', activation='relu'))
-    # # model.add(MaxPooling2D(pool_size=pool_size)) 
-    # model.add(Dropout(0.5))
+    model.add(Dropout(0.5))
 
-    # # #Flatten and Dense Layer
+    # #Flatten and Dense Layer
     
     model.add(Flatten())
     print('Model flattened out to ', model.output_shape)
     # #  #or subsetting
-    model.add(Dense(4096, activation='relu'))
-    # model.add(Dropout(0.5))
-    model.add(Dense(4096, activation='relu'))
+    model.add(Dense(512, activation='relu'))
+    model.add(Dropout(0.5))
+    # model.add(Dense(128, activation='relu'))
     # model.add(Dropout(0.5))
     model.add(Dense(nb_classes, activation='softmax')) 
 
 
-    # # many optimizers available, see https://keras.io/optimizers/#usage-of-optimizers
-    # # suggest you KEEP loss at 'categorical_crossentropy' for this multiclass problem,
-    # # and KEEP metrics at 'accuracy'
-    # # suggest limiting optimizers to one of these: 'adam', 'adadelta', 'sgd'
+    # many optimizers available, see https://keras.io/optimizers/#usage-of-optimizers
+    # suggest you KEEP loss at 'categorical_crossentropy' for this multiclass problem,
+    # and KEEP metrics at 'accuracy'
+    # suggest limiting optimizers to one of these: 'adam', 'adadelta', 'sgd'
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
@@ -153,9 +131,9 @@ def plot_hist(hist):
 if __name__ == '__main__':
     # important inputs to the model: don't changes the ones marked KEEP
     batch_size = 16  # number of training samples used at a time to update the weights
-    nb_classes = 4   # number of output possibilities: [0 - 9] KEEP
+    nb_classes = 1  # number of output possibilities: [0 - 9] KEEP
     nb_epoch = 40       # number of passes through the entire train dataset before weights "final"
-    img_rows, img_cols = 224, 224   # the size of the MNIST images KEEP
+    img_rows, img_cols = 256, 256   # the size of the MNIST images KEEP
     input_shape = (img_rows, img_cols, 3)   # 1 channel image input (grayscale) KEEP
     nb_filters = 32    # number of convolutional filters to use
     pool_size = (2, 2)  # pooling decreases image size, reduces computation, adds translational invariance
