@@ -6,6 +6,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_im
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.applications.xception import Xception
 
+import tensorflow as tf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -72,33 +73,62 @@ def define_model(nb_filters, kernel_size, input_shape, pool_size):
                   metrics=['accuracy'])
     return model
 
-def confusion_matrix(genarator):
-    text_X = generator[0][0]
-    test_y = generator.classes
+def confusion_matrix(cm, class_names):
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+    
+    Args:
+       cm (array, shape = [n, n]): a confusion matrix of integer classes
+       class_names (array, shape = [n]): String names of the integer classes
+    """
+    
+    figure = plt.figure(figsize=(8, 8))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title("Confusion matrix")
+    plt.colorbar()
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+    
+    # Normalize the confusion matrix.
+    cm = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+    
+    # Use white text if squares are dark; otherwise black.
+    threshold = cm.max() / 2.
+    
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        color = "white" if cm[i, j] > threshold else "black"
+        plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+        
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    return figure
 
-    probs = model.predict(test_X)
-    indices = probs.argsort(axis = 1)
-    top_prediction = np.flip(indices, 1)[:, 0]
-    top_prediction.reshape(1, -1)
-
-    class_names = ['healthy', 'rust','multiple diseases', 'rust', 'scab']
-    cnf_matrix = confusion_matrix(test_y, top_prediction)
-    np.set_printoptions(precision=2)
-
-    print(cnf_matrix)
-    #Plot non-normalized confusion matrix
-    # plt.figure()
-    # plot_confusion_matrix(cnf_matrix, classes=class_names,
-    #                       title='Confusion matrix, without normalization')
-
-    # plt.savefig('./images/'+ts+'confusion_matrix.png')
-
-    # Plot normalized confusion matrix
-    # plt.figure()
-    # plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
-    #                       title='Normalized confusion matrix')
-
-    # plt.savefig('./images/'+ts+'normalized_confusion_matrix.png')
+def plot_to_image(figure):
+    """
+    Converts the matplotlib plot specified by 'figure' to a PNG image and
+    returns it. The supplied figure is closed and inaccessible after this call.
+    """
+    
+    buf = io.BytesIO()
+    
+    # Use plt.savefig to save the plot to a PNG in memory.
+    plt.savefig(buf, format='png')
+    
+    # Closing the figure prevents it from being displayed directly inside
+    # the notebook.
+    plt.close(figure)
+    buf.seek(0)
+    
+    # Use tf.image.decode_png to convert the PNG buffer
+    # to a TF image. Make sure you use 4 channels.
+    image = tf.image.decode_png(buf.getvalue(), channels=4)
+    
+    # Use tf.expand_dims to add the batch dimension
+    image = tf.expand_dims(image, 0)
+    
+    return image
 
 if __name__ == '__main__':
     # important inputs to the model: don't changes the ones marked KEEP
@@ -136,3 +166,8 @@ if __name__ == '__main__':
 
     # checkpoint = ModelCheckpoint(filepath='./temp/weights.hdf5', verbose=1, save_best_only=True)
     
+    logdir = "log/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir = logdir, histogram_freq = 1)
+
+    file_writer_cm = tf.summary.create_file_writer(logdir + '/cm')
