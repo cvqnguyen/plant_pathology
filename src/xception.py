@@ -53,14 +53,14 @@ def generators():
 
 def define_model(nb_filters, kernel_size, input_shape, pool_size):
     #nb_filters, kernel_size, input_shape, pool_size
-    model = Xception(include_top=False, input_shape=(300, 300, 3))  # model is a linear stack of layers (don't change)
+    base_model = Xception(include_top=False, input_shape=(300, 300, 3), weights='imagenet')  # model is a linear stack of layers (don't change)
 	
     # add new classifier layers
-    flat1 = Flatten()(model.layers[-1].output)
-    class1 = Dense(1024, activation='relu')(flat1)
-    output = Dense(nb_classes, activation='softmax')(class1)
+    model = base_model.output
+    model = GlobalAveragePooling2D
+    denseout = Dense(nb_classes, activation='softmax')(model)
     # define new model
-    model = Model(inputs=model.inputs, outputs=output)
+    model = Model(inputs=base_model.inputs, outputs=denseout)
 
 
     # many optimizers available, see https://keras.io/optimizers/#usage-of-optimizers
