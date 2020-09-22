@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D,
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.applications.xception import Xception
 
 import pandas as pd
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     # important inputs to the model: don't changes the ones marked KEEP
     batch_size = 16  # number of training samples used at a time to update the weights
     nb_classes = 4  # number of output possibilities: [0 - 9] KEEP
-    nb_epoch = 40       # number of passes through the entire train dataset before weights "final"
+    nb_epoch = 20       # number of passes through the entire train dataset before weights "final"
     img_rows, img_cols = 300, 300   # the size of the MNIST images KEEP
     input_shape = (img_rows, img_cols, 3)   # 1 channel image input (grayscale) KEEP
     nb_filters = 32    # number of convolutional filters to use

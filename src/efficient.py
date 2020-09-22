@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D,
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.applications import EfficientNetB0
 
 import pandas as pd
@@ -53,7 +53,7 @@ def generators():
 
 def define_model(nb_filters, kernel_size, input_shape, pool_size):
     #nb_filters, kernel_size, input_shape, pool_size
-    model = EfficientNetB0(include_top=False, input_shape=(300, 300, 3), weights = 'imagenet')  # model is a linear stack of layers (don't change)
+    model = EfficientNetB0(include_top=False, input_shape=(300, 300, 3), weights='imagenet')  # model is a linear stack of layers (don't change)
 	
     # add new classifier layers
     flat1 = Flatten()(model.layers[-1].output)
