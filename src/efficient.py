@@ -53,14 +53,14 @@ def generators():
 
 def define_model(nb_filters, kernel_size, input_shape, pool_size):
     #nb_filters, kernel_size, input_shape, pool_size
-    model = EfficientNetB0(include_top=False, input_shape=(300, 300, 3), weights='imagenet')  # model is a linear stack of layers (don't change)
+    base_model = EfficientNetB0(include_top=False, input_shape=(300, 300, 3), weights='imagenet')  # model is a linear stack of layers (don't change)
 	
     # add new classifier layers
-    flat1 = Flatten()(model.layers[-1].output)
-    class1 = Dense(1024, activation='relu')(flat1)
-    output = Dense(nb_classes, activation='softmax')(class1)
+    model = base_model.output
+    model = GlobalAveragePooling2D
+    denseout = Dense(nb_classes, activation='softmax')(model)
     # define new model
-    model = Model(inputs=model.inputs, outputs=output)
+    model = Model(inputs=base_model.inputs, outputs=denseout)
 
 
     # many optimizers available, see https://keras.io/optimizers/#usage-of-optimizers
@@ -72,34 +72,20 @@ def define_model(nb_filters, kernel_size, input_shape, pool_size):
                   metrics=['accuracy'])
     return model
 
-def plot_hist(hist):
-    n=8
-    fig, ax = plt.subplots(figsize = (12,18), nrows=2)
-    fig.suptitle('Conv:32:32:64:64:64;Full:128+DP:0.5', fontsize =20)
+def confusion_matrix(genarator):
+    text_X = generator[0][0]
+    test_y = generator.classes
 
-    ax[0].plot(hist.history['val_loss'], label='val', zorder=20)
-    ax[0].plot(hist.history['loss'], label='train', zorder=30)
-    ax[0].legend(loc='upper right')
-    ax[0].set(ylabel='loss', ylim=[0, 1], xlabel='epoch')
-    ax[0].xaxis.label.set_size(20)
-    ax[0].yaxis.label.set_size(20)
-    ax[0].legend(loc='upper right',prop={'size': 15})
+    probs = model.predict(test_X)
+    indices = probs.argsort(axis = 1)
+    top_prediction = np.flip(indices, 1)[:, 0]
+    top_prediction.reshape(1, -1)
 
-    ax[1].plot(hist.history['val_accuracy'], label='val', zorder=20)
-    ax[1].plot(hist.history['accuracy'], label='train', zorder=30)
-    h = hist.history['val_accuracy']
-    avg_h = [(sum(h[i:(i + n)])) / n for i in range(len(h) - n)]
-    ax[1].plot(np.arange(n, len(h)), avg_h, color='red', label='val_trend', zorder=40)
-    ax[1].set(ylabel='accuracy', ylim=[0.55, 1.05], xlabel='epoch')
-    ax[1].xaxis.label.set_size(20)
-    ax[1].yaxis.label.set_size(20)
-    ax[1].legend(loc='upper left',prop={'size': 15})
-    plt.axhline(0.8, color='darkgoldenrod', linestyle='--', zorder=10, alpha=0.5)
-    plt.axhline(0.9, color='silver', linestyle='--',zorder=10, alpha=0.5)
-    plt.axhline(0.95, color='goldenrod', linestyle='--',zorder=10, alpha=0.5)
-    plt.savefig('images/3232646464D128DP5BS32plot.png')
-    plt.show()
-    
+    class_names = ['healthy', 'rust','multiple diseases', 'rust', 'scab']
+    cnf_matrix = confusion_matrix(test_y, top_prediction)
+    np.set_printoptions(precision=2)
+
+    print(cnf_matrix)
 
 if __name__ == '__main__':
     # important inputs to the model: don't changes the ones marked KEEP
