@@ -57,7 +57,7 @@ def define_model(nb_filters, kernel_size, input_shape, pool_size):
 	
     # add new classifier layers
     model = base_model.output
-    model = GlobalAveragePooling2D
+    model = GlobalAveragePooling2D()(model)
     denseout = Dense(nb_classes, activation='softmax')(model)
     # define new model
     model = Model(inputs=base_model.inputs, outputs=denseout)

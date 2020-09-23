@@ -3,7 +3,7 @@ from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D,
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, LambdaCallback
 from tensorflow.keras.applications.xception import Xception
 
 import tensorflow as tf
@@ -12,8 +12,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-deep')
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 from PIL import Image
+from datetime import datetime
+ts = str(datetime.now().timestamp())
 np.random.seed(4666)  # for reproducibility
 
 def append_ext(n):
@@ -22,9 +25,9 @@ def append_ext(n):
 def load_and_featurize_data():
 
     # Read in data
-    train_df = pd.read_csv('data/train.csv')
+    train_df = pd.read_csv('data/df_class.csv')
     # Train test split
-    train_df["image_id"] = train_df["image_id"].apply(append_ext)
+    # train_df["image_id"] = train_df["image_id"].apply(append_ext)
     train_df, val_df = train_test_split(train_df, test_size=0.30, random_state=4666)
     val_df, test_df = train_test_split(val_df, test_size = .50, random_state=4666)
     return train_df, val_df, test_df
@@ -37,15 +40,15 @@ def generators():
     columns = ['healthy', 'multiple_diseases', 'rust', 'scab']
     # Create generators for train, test, val to save memory
     train_generator=train_datagen.flow_from_dataframe(dataframe=train_df, directory="./data/", 
-                        x_col="image_id", y_col=columns, subset='training', batch_size=batch_size, seed=4666, 
-                        shuffle=True, class_mode="raw", target_size=(img_rows, img_cols))
+                        x_col="image_id", y_col='class', subset='training', batch_size=batch_size, seed=4666, 
+                        shuffle=True, class_mode='categorical', target_size=(img_rows, img_cols))
     
     val_generator=test_datagen.flow_from_dataframe(dataframe=val_df, directory="./data/", x_col="image_id", 
-                        y_col=columns, batch_size=batch_size, seed=4666, shuffle=True, class_mode="raw", 
+                        y_col='class', batch_size=batch_size, seed=4666, shuffle=True, class_mode="categorical", 
                         target_size=(img_rows, img_cols))
 
     test_generator=test_datagen.flow_from_dataframe(dataframe=test_df, directory="./data/", x_col="image_id", 
-                        y_col=columns, batch_size=batch_size, seed=4666, shuffle=False, class_mode="raw", 
+                        y_col='class', batch_size=batch_size, seed=4666, shuffle=False, class_mode="categorical", 
                         target_size=(img_rows, img_cols))
     
     return train_generator, val_generator, test_generator
@@ -58,7 +61,7 @@ def define_model(nb_filters, kernel_size, input_shape, pool_size):
 	
     # add new classifier layers
     model = base_model.output
-    model = GlobalAveragePooling2D
+    model = GlobalAveragePooling2D()(model)
     denseout = Dense(nb_classes, activation='softmax')(model)
     # define new model
     model = Model(inputs=base_model.inputs, outputs=denseout)
@@ -130,6 +133,23 @@ def plot_to_image(figure):
     
     return image
 
+def log_confusion_matrix(epoch, logs):
+    
+    # Use the model to predict the values from the test_images.
+    test_pred_raw = model.predict(test_generator)
+    
+    test_pred = np.argmax(test_pred_raw, axis=1)
+    
+    # Calculate the confusion matrix using sklearn.metrics
+    cm = confusion_matrix(test_labels, test_pred)
+    
+    figure = plot_confusion_matrix(cm, class_names=class_names)
+    cm_image = plot_to_image(figure)
+    
+    # Log the confusion matrix as an image summary.
+    with file_writer_cm.as_default():
+        tf.summary.image("Confusion Matrix", cm_image, step=epoch)
+
 if __name__ == '__main__':
     # important inputs to the model: don't changes the ones marked KEEP
     batch_size = 16  # number of training samples used at a time to update the weights
@@ -152,9 +172,12 @@ if __name__ == '__main__':
     
 
     # model.summary()
-    
+    # checkpoint = ModelCheckpoint(filepath='../temp/'+ts+'.hdf5', verbose=1, save_best_only=True)
+    # tensorboard = TensorBoard(log_dir = 'log/', histogram_freq = 0, write_graph=True)
+    cm_callback = LambdaCallback(on_epoch_end=log_confusion_matrix)
+
     model.fit(train_generator, steps_per_epoch = steps_per_epoch, epochs = nb_epoch, verbose = 1, validation_data=val_generator, validation_steps=val_df.shape[0]//batch_size)
-    
+    #callbacks=[checkpoint, tensorboard]
     #Call plot function
     # plot_hist(hist)
 
@@ -164,10 +187,8 @@ if __name__ == '__main__':
     print('Test score:', score[0])
     print('Test accuracy:', score[1])  # this is the one we care about
 
-    # checkpoint = ModelCheckpoint(filepath='./temp/weights.hdf5', verbose=1, save_best_only=True)
     
-    logdir = "log/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    # logdir = "log/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    
 
-    tensorboard_callback = keras.callbacks.TensorBoard(log_dir = logdir, histogram_freq = 1)
-
-    file_writer_cm = tf.summary.create_file_writer(logdir + '/cm')
+    # file_writer_cm = tf.summary.create_file_writer(logdir + '/cm')
